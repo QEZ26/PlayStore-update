@@ -19,43 +19,50 @@ def get_latest_play_store_version():
         
         # 寻找列表中所有的版本条目
         variants = soup.find_all('a', class_='fontBlack')
+        print(f"📡 网页请求成功，共找到 {len(variants)} 个版本链接。开始过滤...")
+        
         for variant in variants:
             title = variant.text.strip()
             title_lower = title.lower()
             
-            # 严格过滤掉测试版、车机版、手表版、电视版
-            if "beta" in title_lower or "automotive" in title_lower or "wear os" in title_lower or "android tv" in title_lower:
+            print(f"🔍 正在检查条目: {title}")
+            
+            # 排除车机版、手表版、电视版、测试版
+            if "automotive" in title_lower or "wear os" in title_lower or "android tv" in title_lower or "beta" in title_lower:
+                print("❌ 属于非手机版或测试版，跳过。")
                 continue
                 
-            if "google play store" in title:
-                # 提取出纯粹的版本号，例如把 "Google Play Store 51.6.23-31 [0] [PR] ..." 变成 "51.6.23-31"
-                raw_version = title.replace("Google Play Store", "").strip()
-                # 截取到空格为止，去掉后面多余的 [0] [PR] 等系统后缀，只保留干净的版本号
+            if "google play store" in title_lower:
+                # 提取纯版本号
+                raw_version = title.replace("Google Play Store", "").replace("google play store", "").strip()
+                # 截取到空格为止
                 clean_version = raw_version.split(" ")[0] if " " in raw_version else raw_version
                 
                 download_link = "https://www.apkmirror.com" + variant['href']
+                print(f"✅ 成功锁定手机正式版！版本号: {clean_version}")
                 return clean_version, download_link
     except Exception as e:
-        print(f"解析失败: {e}")
+        print(f"💥 解析发生严重错误: {e}")
     return None, None
 
 def send_tg_message(text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown"}
-    requests.post(url, json=payload)
+    r = requests.post(url, json=payload)
+    print(f"📤 TG 发送状态码: {r.status_code}, 响应内容: {r.text}")
 
 def main():
     current_version, dl_link = get_latest_play_store_version()
     if not current_version:
-        print("未获取到新版本。")
+        print("🛑 最终结论: 未能成功从网页匹配到任何有效的手机正式版。")
         return
 
     last_version = ""
     if os.path.exists(VERSION_FILE):
         with open(VERSION_FILE, "r") as f:
             last_version = f.read().strip()
+    print(f"💾 历史记录版本: '{last_version}' | 当前抓取版本: '{current_version}'")
 
-    # 只要当前抓取到的手机稳定版和上次记录的不同，就触发推送
     if current_version != last_version:
         message = (
             f"🚀 *发现 Google Play 商店「手机正式版」更新！*\n\n"
@@ -65,12 +72,11 @@ def main():
         )
         send_tg_message(message)
         
-        # 将最新的正确版本号写入记录文件
         with open(VERSION_FILE, "w") as f:
             f.write(current_version)
-        print(f"新版本 {current_version} 推送成功！")
+        print(f"✨ 新版本 {current_version} 处理完毕，文件已记录。")
     else:
-        print("当前已是最新版，无需推送。")
+        print("😴 两个版本号一致，当前已是最新版，无需推送。")
 
 if __name__ == "__main__":
     main()
