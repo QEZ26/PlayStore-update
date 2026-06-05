@@ -79,8 +79,11 @@ def main():
             last_version = f.read().strip()
 
     if current_version != last_version:
-        # 极简排版：只留版本号和超链接
-        message = f"🤖 *Google Play Store* \n\n📦 [{current_version}-31]({dl_link})"
+        # 严格按照红圈要求定制的文案排版
+        message = (
+            f"📱 *发现 Google Play 商店更新！*\n\n"
+            f"📊 *最新版本:* [{current_version}-31 (Android 12+)]({dl_link})"
+        )
         send_tg_message(message)
         
         with open(VERSION_FILE, "w") as f:
