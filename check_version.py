@@ -2,7 +2,6 @@ import os
 import requests
 from bs4 import BeautifulSoup
 
-# 配置信息
 TG_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 VERSION_FILE = "last_version.txt"
@@ -23,7 +22,6 @@ def get_s25_ultra_specific_link(variant_page_url):
                 if a_tag and 'href' in a_tag.attrs:
                     return "https://www.apkmirror.com" + a_tag['href']
                     
-        # 兜底
         for row in rows:
             text_content = row.text.lower()
             if "universal" in text_content and ("android 12" in text_content or "12l" in text_content):
@@ -78,16 +76,20 @@ def main():
         with open(VERSION_FILE, "r") as f:
             last_version = f.read().strip()
 
+    print(f"DEBUG: 缓存中的版本是 [{last_version}], 抓到的新版本是 [{current_version}]")
+
     if current_version != last_version:
-        # 严格按照红圈要求定制的文案排版
         message = (
             f"📱 *发现 Google Play 商店更新！*\n\n"
             f"📊 *最新版本:* [{current_version}-31 (Android 12+)]({dl_link})"
         )
         send_tg_message(message)
         
+        # 本地生成文件，交由外部的 GitHub Action 统一进行官方云缓存
         with open(VERSION_FILE, "w") as f:
             f.write(current_version)
+    else:
+        print("版本一致，跳过发送。")
 
 if __name__ == "__main__":
     main()
